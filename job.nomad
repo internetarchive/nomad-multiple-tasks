@@ -1,17 +1,17 @@
-group "internetarchive-nomad-multiple-tasks-backend" {
+group "${var.SLUG}-backend" {
   network {
     # you can omit `to = ..` to let nomad choose the port - that works, too :)
     port "http" { to = 5432 }
   }
 
   service {
-    name = "internetarchive-nomad-multiple-tasks-backend"
+    name = "${var.SLUG}-backend"
     port = "http"
 
     connect { native = true }
   }
 
-  task "internetarchive-nomad-multiple-tasks-backend" {
+  task "${var.SLUG}-backend" {
     driver = "docker"
 
     config {
