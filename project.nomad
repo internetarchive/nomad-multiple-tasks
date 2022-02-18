@@ -4,6 +4,10 @@ variables {
   CI_REGISTRY = "registry.archive.org"
   CI_REGISTRY_IMAGE = "registry.archive.org/www/sentry"
   SLUG = "internetarchive-nomad-multiple-tasks"
+  CI_R2_USER = ""
+  CI_REGISTRY_USER = ""
+  CI_R2_PASS = ""
+  CI_REGISTRY_PASSWORD = ""
 }
 
 variable "HOSTNAMES" {
