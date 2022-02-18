@@ -3,8 +3,3 @@ variables:
 
 include:
   - remote: 'https://gitlab.com/internetarchive/nomad/-/raw/groups/.gitlab-ci.yml'
-
-build:
-  stage: build
-  # kill docker-in-docker
-  services:
