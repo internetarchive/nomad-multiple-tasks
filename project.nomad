@@ -226,6 +226,12 @@ job "NOMAD_VAR_SLUG" {
 
         network_mode = "local"
       }
+      env {
+        # daemon reads this to know what port to listen on
+        PORT = "${NOMAD_PORT_http}"
+        # convenience var you can copy/paste in the other container, to talk to us
+        WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
+      }
     }
   }
 
@@ -317,6 +323,12 @@ job "NOMAD_VAR_SLUG" {
             }
 
             network_mode = "local"
+          }
+          env {
+            # daemon reads this to know what port to listen on
+            PORT = "${NOMAD_PORT_http}"
+            # convenience var you can copy/paste in the other container, to talk to us
+            WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
           }
         }
       }
