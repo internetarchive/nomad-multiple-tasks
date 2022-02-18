@@ -65,18 +65,11 @@ job "internetarchive-nomad-multiple-tasks" {
 
     task "internetarchive-nomad-multiple-tasks" {
       driver = "docker"
-
-      env {
-        # daemon reads this to know what port to listen on
-        PORT = "${NOMAD_PORT_http}"
-        # convenience var you can copy/paste in the other container, to talk to us
-        WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
-      }
-
       config {
         image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
-        network_mode = "local"
         ports = ["http"]
+
+        network_mode = "local"
       }
     }
   }
@@ -104,13 +97,14 @@ job "internetarchive-nomad-multiple-tasks" {
 
           config {
             image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
-            network_mode = "local"
             ports = ["http"]
             auth {
               server_address = "${var.CI_REGISTRY}"
               username = element([for s in [var.CI_R2_USER, var.CI_REGISTRY_USER] : s if s != ""], 0)
               password = element([for s in [var.CI_R2_PASS, var.CI_REGISTRY_PASSWORD] : s if s != ""], 0)
             }
+
+            network_mode = "local"
           }
         }
       }
