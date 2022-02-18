@@ -87,9 +87,7 @@ job "internetarchive-nomad-multiple-tasks" {
     labels = ["${group.value}"]
     content {
       network {
-        # you can omit `to = ..` to let nomad choose the port - that works, too :)
         port "http" { to = 5432 }
-        # port "http" { }
       }
 
       service {
