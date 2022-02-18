@@ -3,6 +3,12 @@ variables {
   CI_COMMIT_SHA = "latest"
   CI_REGISTRY = "registry.archive.org"
   CI_REGISTRY_IMAGE = "registry.archive.org/www/sentry"
+
+  SLUG = "internetarchive-nomad-multiple-tasks"
+  CI_R2_USER = ""
+  CI_REGISTRY_USER = ""
+  CI_R2_PASS = ""
+  CI_REGISTRY_PASSWORD = ""
 }
 
 variable "HOSTNAMES" {
@@ -39,7 +45,7 @@ job "internetarchive-nomad-multiple-tasks" {
     }
 
     service {
-      name = "internetarchive-nomad-multiple-tasks"
+      name = "${var.SLUG}"
       port = "http"
 
       connect { native = true }
@@ -77,33 +83,43 @@ job "internetarchive-nomad-multiple-tasks" {
   }
 
 
-  group "internetarchive-nomad-multiple-tasks-backend" {
-    network {
-      # you can omit `to = ..` to let nomad choose the port - that works, too :)
-      port "http" { to = 5432 }
-    }
-
-    service {
-      name = "internetarchive-nomad-multiple-tasks-backend"
-      port = "http"
-
-      connect { native = true }
-    }
-
-    task "internetarchive-nomad-multiple-tasks-backend" {
-      driver = "docker"
-
-      env {
-        # daemon reads this to know what port to listen on
-        PORT = "${NOMAD_PORT_http}"
-        # convenience var you can copy/paste in the other container, to talk to us
-        WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
+  dynamic "group" {
+    for_each = ["${var.SLUG}-backend"]
+    labels = ["${group.value}"]
+    content {
+      network {
+        # you can omit `to = ..` to let nomad choose the port - that works, too :)
+        port "http" { to = 5432 }
       }
 
-      config {
-        image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
-        network_mode = "local"
-        ports = ["http"]
+      service {
+        name = "${var.SLUG}-backend"
+        port = "http"
+
+        connect { native = true }
+      }
+
+      task "internetarchive-nomad-multiple-tasks-backend" {
+        driver = "docker"
+
+        env {
+          # daemon reads this to know what port to listen on
+          PORT = "${NOMAD_PORT_http}"
+          # convenience var you can copy/paste in the other container, to talk to us
+          WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
+        }
+
+        config {
+          image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
+          network_mode = "local"
+          ports = ["http"]
+        }
+
+        auth {
+          server_address = "${var.CI_REGISTRY}"
+          username = element([for s in [var.CI_R2_USER, var.CI_REGISTRY_USER] : s if s != ""], 0)
+          password = element([for s in [var.CI_R2_PASS, var.CI_REGISTRY_PASSWORD] : s if s != ""], 0)
+        }
       }
     }
   }
