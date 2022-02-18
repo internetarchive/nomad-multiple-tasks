@@ -3,6 +3,7 @@ variables {
   CI_COMMIT_SHA = "latest"
   CI_REGISTRY = "registry.archive.org"
   CI_REGISTRY_IMAGE = "registry.archive.org/www/sentry"
+  SLUG = "internetarchive-nomad-multiple-tasks"
 }
 
 variable "HOSTNAMES" {
