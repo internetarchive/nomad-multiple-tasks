@@ -88,8 +88,8 @@ job "internetarchive-nomad-multiple-tasks" {
     content {
       network {
         # you can omit `to = ..` to let nomad choose the port - that works, too :)
-        # port "http" { to = 5432 }
-        port "http" { }
+        port "http" { to = 5432 }
+        # port "http" { }
       }
 
       service {
