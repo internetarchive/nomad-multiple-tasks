@@ -82,11 +82,13 @@ job "internetarchive-nomad-multiple-tasks" {
     }
   }
 
-
+  /*
   dynamic "group" {
     for_each = ["${var.SLUG}-backend"]
     labels = ["${group.value}"]
     content {
+  */
+    group "internetarchive-nomad-multiple-tasks-backend" {
       network {
         # you can omit `to = ..` to let nomad choose the port - that works, too :)
         port "http" { to = 5432 }
@@ -122,5 +124,5 @@ job "internetarchive-nomad-multiple-tasks" {
         }
       }
     }
-  }
+  //}
 }
