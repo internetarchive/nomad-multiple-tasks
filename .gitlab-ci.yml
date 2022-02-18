@@ -1,2 +1,10 @@
+variables:
+  NOMAD_VAR_NETWORK_MODE: 'local'
+
 include:
-  - remote: 'https://gitlab.com/internetarchive/nomad/-/raw/groups/.gitlab-ci.yml' # xxx /groups/
+  - remote: 'https://gitlab.com/internetarchive/nomad/-/raw/groups/.gitlab-ci.yml'
+
+build:
+  stage: build
+  # kill docker-in-docker
+  services:
