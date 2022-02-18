@@ -1,5 +1,10 @@
 #!/usr/bin/env -S deno run --allow-net --allow-env --allow-run --watch
 
+/*
+dig +short  internetarchive-nomad-multiple-tasks.service.consul          SRV
+dig +short  internetarchive-nomad-multiple-tasks-backend.service.consul  SRV
+*/
+
 const back = 'internetarchive-nomad-multiple-tasks-backend'
 const task = Deno.env.get('NOMAD_TASK_NAME')
 const listen = Number(Deno.env.get('NOMAD_PORT_http') || 5000)
