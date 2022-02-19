@@ -64,7 +64,12 @@ job "internetarchive-nomad-multiple-tasks" {
       }
     }
 
-    task "internetarchive-nomad-multiple-tasks" {
+//    task "internetarchive-nomad-multiple-tasks" {
+  dynamic "task" {
+    for_each = ["${var.SLUG}"]
+    labels = ["${task.value}"]
+    content {
+
       driver = "docker"
 
       env {
@@ -81,6 +86,8 @@ job "internetarchive-nomad-multiple-tasks" {
       }
     }
   }
+  }//
+
 
   /*
   dynamic "group" {
