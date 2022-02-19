@@ -1,6 +1,7 @@
 # nomad-multiple-tasks
 
 demo repo that deploys two+ related containers (eg: frontend + redis or DB, etc.)
+which can talk to each other
 
 example webapp (this repo): https://internetarchive-nomad-multiple-tasks.dev.archive.org/
 
@@ -14,7 +15,7 @@ sudo docker network create local
 
 
 ## Usage
-To find another container's port to talk to it, use for hostname:
+From inside a container, to find another container's port to talk to it, use for hostname:
 ```
 [TASKNAME].connect.consul
 ```
