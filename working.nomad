@@ -1,3 +1,15 @@
+# NOTE: *critically* you have to run this on each VM that hosts nomad docker containers *first*:
+#   sudo docker network create local
+
+# To find another container's port to talk to it, use for hostname: [TASKNAME].connect.consul
+# and then to lookup, for example, `internetarchive-nomad-multiple-tasks-backend` port, either of:
+#   dig +short internetarchive-nomad-multiple-tasks-backend.service.consul SRV |cut -f3 -d' '
+#   wget -qO- 'http://consul.service.consul:8500/v1/catalog/service/internetarchive-nomad-multiple-tasks-backend?passing' |jq .
+#
+#
+#  https://medium.com/@leshik/a-little-trick-with-docker-12686df15d58
+
+
 variables {
   CI_COMMIT_REF_SLUG = "main"
   CI_COMMIT_SHA = "latest"
@@ -21,18 +33,6 @@ variable "NOMAD_SECRETS" {
   type = map(string)
   default = {}
 }
-
-
-# NOTE: *critically* you have to run this on each VM that hosts nomad docker containers *first*:
-#   sudo docker network create local
-
-# To find another container's port to talk to it, use for hostname: [TASKNAME].connect.consul
-# and then to lookup, for example, `internetarchive-nomad-multiple-tasks-backend` port, either of:
-#   dig +short internetarchive-nomad-multiple-tasks-backend.service.consul SRV |cut -f3 -d' '
-#   wget -qO- 'http://consul.service.consul:8500/v1/catalog/service/internetarchive-nomad-multiple-tasks-backend?passing' |jq .
-#
-#
-#  https://medium.com/@leshik/a-little-trick-with-docker-12686df15d58
 
 
 job "NOMAD_VAR_SLUG" {
