@@ -193,15 +193,6 @@ job "NOMAD_VAR_SLUG" {
   datacenters = ["dc1"]
 
   group "NOMAD_VAR_SLUG" {
-    count = var.COUNT
-
-    restart {
-      attempts = 3
-      delay    = "15s"
-      interval = "30m"
-      mode     = "fail"
-    }
-
     network {
       dynamic "port" {
         # port.key == portnumber
