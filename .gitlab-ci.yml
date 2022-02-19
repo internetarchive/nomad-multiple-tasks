@@ -1,5 +1,6 @@
 variables:
   NOMAD_VAR_NETWORK_MODE: 'local'
+  NOMAD_VAR_CHECK_PROTOCOL: 'tcp'
 
 include:
   - remote: 'https://gitlab.com/internetarchive/nomad/-/raw/groups/.gitlab-ci.yml'

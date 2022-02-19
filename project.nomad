@@ -188,6 +188,7 @@ locals {
 # VARS.NOMAD--INSERTS-HERE
 
 
+# NOTE: for main or master branch: NOMAD_VAR_SLUG === CI_PROJECT_PATH_SLUG
 job "NOMAD_VAR_SLUG" {
   datacenters = ["dc1"]
 
@@ -213,32 +214,93 @@ job "NOMAD_VAR_SLUG" {
     }
 
     network {
-      # you can omit `to = ..` to let nomad choose the port - that works, too :)
-      port "http" { to = 5000 }
+      dynamic "port" {
+        # port.key == portnumber
+        # port.value == portname
+        for_each = local.ports_all
+        labels = [ "${port.value}" ]
+        content {
+          to = port.key
+        }
+      }
     }
 
+    # The "service" stanza instructs Nomad to register this task as a service
+    # in the service discovery engine, which is currently Consul. This will
+    # make the service addressable after Nomad has placed it on a host and
+    # port.
+    #
+    # For more information and examples on the "service" stanza, please see
+    # the online documentation at:
+    #
+    #     https://www.nomadproject.io/docs/job-specification/service.html
+    #
     service {
       name = "${var.SLUG}"
+      # second line automatically redirects any http traffic to https
+      tags = concat([for HOST in var.HOSTNAMES :
+        "urlprefix-${HOST}:443/"], [for HOST in var.HOSTNAMES :
+        "urlprefix-${HOST}:80/ redirect=308,https://${HOST}$path"])
+
+      canary_tags = concat([for HOST in var.HOSTNAMES :
+        "urlprefix-canary-${HOST}:443/"], [for HOST in var.HOSTNAMES :
+        "urlprefix-canary-${HOST}:80/ redirect=308,https://canary-${HOST}/"])
+
+
       port = "http"
 
       connect { native = true }
 
-      # tags (for load balancer external name entries) & check are only difference between 2 groups
-      tags = concat([for HOST in var.HOSTNAMES :
-        "urlprefix-${HOST}:443/"], [for HOST in var.HOSTNAMES :
-        "urlprefix-${HOST}:80/ redirect=308,https://${HOST}/"])
-
       check {
         name     = "alive"
-        type     = "tcp"
+        type     = "${var.CHECK_PROTOCOL}"
+        path     = "${var.CHECK_PATH}"
         port     = "http"
         timeout  = "10s"
         interval = "10s"
       }
     }
 
+    dynamic "service" {
+      for_each = local.ports_extra_http
+      content {
+        # service.key == portnumber
+        # service.value == portname
+        name = "${var.SLUG}-${service.value}"
+        tags = ["urlprefix-${var.HOSTNAMES[0]}:${service.key}/"]
+        port = "${service.value}"
+        check {
+          name     = "alive"
+          type     = "${var.CHECK_PROTOCOL}"
+          path     = "${var.CHECK_PATH}"
+          port     = "http"
+          interval = "10s"
+          timeout  = "2s"
+        }
+      }
+    }
+    dynamic "service" {
+      for_each = local.ports_extra_tcp
+      content {
+        # service.key == portnumber
+        # service.value == portname
+        name = "${var.SLUG}-${service.value}"
+        tags = ["urlprefix-:${service.key} proto=tcp"]
+        port = "${service.value}"
+        check {
+          name     = "alive"
+          type     = "${var.CHECK_PROTOCOL}"
+          path     = "${var.CHECK_PATH}"
+          port     = "http"
+          interval = "10s"
+          timeout  = "2s"
+        }
+      }
+    }
+
+
     dynamic "task" {
-      for_each = ["${var.SLUG}"]
+      for_each = local.job_names
       labels = ["${task.value}"]
       content {
         driver = "docker"
