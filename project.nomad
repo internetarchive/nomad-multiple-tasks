@@ -98,6 +98,14 @@ job "NOMAD_VAR_SLUG" {
       port = "http"
 
       connect { native = true }
+
+      check {
+        name     = "alive"
+        type     = "tcp"
+        port     = "http"
+        timeout  = "10s"
+        interval = "10s"
+      }
     }
 
     dynamic "task" {
