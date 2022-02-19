@@ -35,10 +35,10 @@ variable "NOMAD_SECRETS" {
 #  https://medium.com/@leshik/a-little-trick-with-docker-12686df15d58
 
 
-job "internetarchive-nomad-multiple-tasks" {
+job "NOMAD_VAR_SLUG" {
   datacenters = ["dc1"]
 
-  group "internetarchive-nomad-multiple-tasks" {
+  group "NOMAD_VAR_SLUG" {
     network {
       # you can omit `to = ..` to let nomad choose the port - that works, too :)
       port "http" { to = 5000 }
@@ -87,48 +87,41 @@ job "internetarchive-nomad-multiple-tasks" {
   }
 
 
-  /*
-  dynamic "group" {
-    for_each = ["${var.SLUG}-backend"]
-    labels = ["${group.value}"]
-    content {
-  */
-    group "internetarchive-nomad-multiple-tasks-backend" {
-      network {
-        # you can omit `to = ..` to let nomad choose the port - that works, too :)
-        port "http" { to = 5432 }
-      }
+  group "NOMAD_VAR_SLUG-backend" {
+    network {
+      # you can omit `to = ..` to let nomad choose the port - that works, too :)
+      port "http" { to = 5432 }
+    }
 
-      service {
-        name = "${var.SLUG}-backend"
-        port = "http"
+    service {
+      name = "${var.SLUG}-backend"
+      port = "http"
 
-        connect { native = true }
-      }
+      connect { native = true }
+    }
 
-      dynamic "task" {
-        for_each = ["${var.SLUG}-backend"]
-        labels = ["${task.value}"]
-        content {
-          driver = "docker"
+    dynamic "task" {
+      for_each = ["${var.SLUG}-backend"]
+      labels = ["${task.value}"]
+      content {
+        driver = "docker"
 
-          env {
-            # daemon reads this to know what port to listen on
-            PORT = "${NOMAD_PORT_http}"
-            # convenience var you can copy/paste in the other container, to talk to us
-            WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
-          }
+        env {
+          # daemon reads this to know what port to listen on
+          PORT = "${NOMAD_PORT_http}"
+          # convenience var you can copy/paste in the other container, to talk to us
+          WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
+        }
 
-          config {
-            image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
-            network_mode = "local"
-            ports = ["http"]
+        config {
+          image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
+          network_mode = "local"
+          ports = ["http"]
 
-            auth {
-              server_address = "${var.CI_REGISTRY}"
-              username = element([for s in [var.CI_R2_USER, var.CI_REGISTRY_USER] : s if s != ""], 0)
-              password = element([for s in [var.CI_R2_PASS, var.CI_REGISTRY_PASSWORD] : s if s != ""], 0)
-            }
+          auth {
+            server_address = "${var.CI_REGISTRY}"
+            username = element([for s in [var.CI_R2_USER, var.CI_REGISTRY_USER] : s if s != ""], 0)
+            password = element([for s in [var.CI_R2_PASS, var.CI_REGISTRY_PASSWORD] : s if s != ""], 0)
           }
         }
       }
