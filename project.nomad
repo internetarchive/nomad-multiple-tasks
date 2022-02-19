@@ -298,6 +298,13 @@ job "NOMAD_VAR_SLUG" {
         content {
           driver = "docker"
 
+          env {
+            # daemon reads this to know what port to listen on
+            PORT = "${NOMAD_PORT_http}"
+            # convenience var you can copy/paste in the other container, to talk to us
+            WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
+          }
+
           # UGH - have to copy/paste this next block twice -- first for no docker login needed;
           #       second for docker login needed (job spec will assemble in just one).
           #       This is because we can't put dynamic content *inside* the 'config { .. }' stanza.
