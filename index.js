@@ -23,7 +23,6 @@ async function handle(conn) {
     if (task && task !== back) {
       try {
         // now lookup the backend service:
-        // now lookup the backend service:
         const p = Deno.run({cmd: ['dig', '+short', `${back}.service.consul`, 'SRV'], stdout: 'piped' })
         await p.status()
         const port = new TextDecoder().decode(await p.output()).split(' ')[2]

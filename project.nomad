@@ -117,12 +117,6 @@ job "NOMAD_VAR_SLUG" {
           image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
           network_mode = "local"
           ports = ["http"]
-
-          auth {
-            server_address = "${var.CI_REGISTRY}"
-            username = element([for s in [var.CI_R2_USER, var.CI_REGISTRY_USER] : s if s != ""], 0)
-            password = element([for s in [var.CI_R2_PASS, var.CI_REGISTRY_PASSWORD] : s if s != ""], 0)
-          }
         }
       }
     }
