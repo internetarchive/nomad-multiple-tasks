@@ -1,15 +1,3 @@
-# NOTE: *critically* you have to run this on each VM that hosts nomad docker containers *first*:
-#   sudo docker network create local
-
-# To find another container's port to talk to it, use for hostname: [TASKNAME].connect.consul
-# and then to lookup, for example, `internetarchive-nomad-multiple-tasks-backend` port, either of:
-#   dig +short internetarchive-nomad-multiple-tasks-backend.service.consul SRV |cut -f3 -d' '
-#   wget -qO- 'http://consul.service.consul:8500/v1/catalog/service/internetarchive-nomad-multiple-tasks-backend?passing' |jq .
-#
-#
-#  https://medium.com/@leshik/a-little-trick-with-docker-12686df15d58
-
-
 # Variables used below and their defaults if not set externally
 variables {
   # These all pass through from GitLab [build] phase.
@@ -193,178 +181,262 @@ job "NOMAD_VAR_SLUG" {
   datacenters = ["dc1"]
 
   group "NOMAD_VAR_SLUG" {
-    count = var.COUNT
+      count = var.COUNT
 
-    update {
-      # https://learn.hashicorp.com/tutorials/nomad/job-rolling-update
-      max_parallel  = 1
-      # https://learn.hashicorp.com/tutorials/nomad/job-blue-green-and-canary-deployments
-      canary = var.COUNT
-      auto_promote  = true
-      min_healthy_time  = "30s"
-      healthy_deadline  = "5m"
-      progress_deadline = "10m"
-      auto_revert   = true
-    }
-    restart {
-      attempts = 3
-      delay    = "15s"
-      interval = "30m"
-      mode     = "fail"
-    }
+      update {
+        # https://learn.hashicorp.com/tutorials/nomad/job-rolling-update
+        max_parallel  = 1
+        # https://learn.hashicorp.com/tutorials/nomad/job-blue-green-and-canary-deployments
+        canary = var.COUNT
+        auto_promote  = true
+        min_healthy_time  = "30s"
+        healthy_deadline  = "5m"
+        progress_deadline = "10m"
+        auto_revert   = true
+      }
+      restart {
+        attempts = 3
+        delay    = "15s"
+        interval = "30m"
+        mode     = "fail"
+      }
+      network {
+        dynamic "port" {
+          # port.key == portnumber
+          # port.value == portname
+          for_each = local.ports_all
+          labels = [ "${port.value}" ]
+          content {
+            to = port.key
+          }
+        }
+      }
 
-    network {
-      dynamic "port" {
-        # port.key == portnumber
-        # port.value == portname
-        for_each = local.ports_all
-        labels = [ "${port.value}" ]
+
+      # The "service" stanza instructs Nomad to register this task as a service
+      # in the service discovery engine, which is currently Consul. This will
+      # make the service addressable after Nomad has placed it on a host and
+      # port.
+      #
+      # For more information and examples on the "service" stanza, please see
+      # the online documentation at:
+      #
+      #     https://www.nomadproject.io/docs/job-specification/service.html
+      #
+      service {
+        name = "${var.SLUG}"
+        # second line automatically redirects any http traffic to https
+        tags = concat([for HOST in var.HOSTNAMES :
+          "urlprefix-${HOST}:443/"], [for HOST in var.HOSTNAMES :
+          "urlprefix-${HOST}:80/ redirect=308,https://${HOST}$path"])
+
+        canary_tags = concat([for HOST in var.HOSTNAMES :
+          "urlprefix-canary-${HOST}:443/"], [for HOST in var.HOSTNAMES :
+          "urlprefix-canary-${HOST}:80/ redirect=308,https://canary-${HOST}/"])
+
+        port = "http"
+        check {
+          name     = "alive"
+          type     = "${var.CHECK_PROTOCOL}"
+          path     = "${var.CHECK_PATH}"
+          port     = "http"
+          interval = "10s"
+          timeout  = "${var.CHECK_TIMEOUT}"
+          check_restart {
+            limit = 3  # auto-restart task when healthcheck fails 3x in a row
+
+            # give container (eg: having issues) custom time amount to stay up for debugging before
+            # 1st health check (eg: "3600s" value would be 1hr)
+            grace = "${var.HEALTH_TIMEOUT}"
+          }
+        }
+
+        connect { native = true }
+      }
+
+      dynamic "service" {
+        for_each = local.ports_extra_http
         content {
-          to = port.key
+          # service.key == portnumber
+          # service.value == portname
+          name = "${var.SLUG}-${service.value}"
+          tags = ["urlprefix-${var.HOSTNAMES[0]}:${service.key}/"]
+          port = "${service.value}"
+          check {
+            name     = "alive"
+            type     = "${var.CHECK_PROTOCOL}"
+            path     = "${var.CHECK_PATH}"
+            port     = "http"
+            interval = "10s"
+            timeout  = "2s"
+          }
+        }
+      }
+      dynamic "service" {
+        for_each = local.ports_extra_tcp
+        content {
+          # service.key == portnumber
+          # service.value == portname
+          name = "${var.SLUG}-${service.value}"
+          tags = ["urlprefix-:${service.key} proto=tcp"]
+          port = "${service.value}"
+          check {
+            name     = "alive"
+            type     = "${var.CHECK_PROTOCOL}"
+            path     = "${var.CHECK_PATH}"
+            port     = "http"
+            interval = "10s"
+            timeout  = "2s"
+          }
+        }
+      }
+
+
+      dynamic "task" {
+        for_each = local.job_names
+        labels = ["${task.value}"]
+        content {
+          driver = "docker"
+
+          # UGH - have to copy/paste this next block twice -- first for no docker login needed;
+          #       second for docker login needed (job spec will assemble in just one).
+          #       This is because we can't put dynamic content *inside* the 'config { .. }' stanza.
+          dynamic "config" {
+            for_each = local.docker_no_login
+            content {
+              image = "${local.docker_image}"
+              image_pull_timeout = "20m"
+              network_mode = "${var.NETWORK_MODE}"
+              ports = [for portnumber, portname in var.PORTS : portname]
+              mounts = var.BIND_MOUNTS
+              # The MEMORY var now becomes a **soft limit**
+              # We will 10x that for a **hard limit**
+              memory_hard_limit = "${var.MEMORY * 10}"
+
+              force_pull = true
+            }
+          }
+          dynamic "config" {
+            for_each = slice(local.docker_pass, 0, min(1, length(local.docker_pass)))
+            content {
+              image = "${local.docker_image}"
+              image_pull_timeout = "20m"
+              network_mode = "${var.NETWORK_MODE}"
+              ports = [for portnumber, portname in var.PORTS : portname]
+              mounts = var.BIND_MOUNTS
+              # The MEMORY var now becomes a **soft limit**
+              # We will 10x that for a **hard limit**
+              memory_hard_limit = "${var.MEMORY * 10}"
+
+              auth {
+                server_address = "${var.CI_REGISTRY}"
+                username = element(local.docker_user, 0)
+                password = "${config.value}"
+              }
+
+              force_pull = var.FORCE_PULL
+            }
+          }
+
+          resources {
+            memory = "${var.MEMORY}"
+            cpu    = "${var.CPU}"
+          }
+
+
+          dynamic "volume_mount" {
+            for_each = setintersection([var.HOME], ["ro"])
+            content {
+              volume      = "home-${volume_mount.key}"
+              destination = "/home"
+              read_only   = true
+            }
+          }
+          dynamic "volume_mount" {
+            for_each = setintersection([var.HOME], ["rw"])
+            content {
+              volume      = "home-${volume_mount.key}"
+              destination = "/home"
+              read_only   = false
+            }
+          }
+
+          dynamic "volume_mount" {
+            # volume_mount.key == slot, eg: "/pv3"
+            # volume_mount.value == dest dir, eg: "/pv" or "/bitnami/wordpress"
+            for_each = local.pvs
+            content {
+              volume      = "${volume_mount.key}"
+              destination = "${volume_mount.value}"
+              read_only   = false
+            }
+          }
+
+          dynamic "template" {
+            # Secrets get stored in consul kv store, with the key [SLUG], when your project has set a
+            # CI/CD variable like NOMAD_SECRET_[SOMETHING].
+            # Setup the nomad job to dynamically pull secrets just before the container starts -
+            # and insert them into the running container as environment variables.
+            for_each = slice(keys(var.NOMAD_SECRETS), 0, min(1, length(keys(var.NOMAD_SECRETS))))
+            content {
+              change_mode = "noop"
+              destination = "secrets/kv.env"
+              env         = true
+              data = "{{ key \"${var.SLUG}\" }}"
+            }
+          }
+        }
+      } # end dynamic "task"
+
+      dynamic "task" {
+        # when a job has CI/CD secrets - eg: CI/CD Variables named like "NOMAD_SECRET_..."
+        # then here is where we dynamically insert them into consul (as a single JSON k/v string)
+        for_each = slice(keys(var.NOMAD_SECRETS), 0, min(1, length(keys(var.NOMAD_SECRETS))))
+        labels = ["kv"]
+        content {
+          driver = "exec"
+          config {
+            command = var.CONSUL_PATH
+            args = [ "kv", "put", var.SLUG, local.kv ]
+          }
+          lifecycle {
+            hook = "prestart"
+            sidecar = false
+          }
+        }
+      }
+
+      dynamic "volume" {
+        for_each = setintersection([var.HOME], ["ro"])
+        labels = [ "home-${volume.key}" ]
+        content {
+          type      = "host"
+          source    = "home-${volume.key}"
+          read_only = true
+        }
+      }
+      dynamic "volume" {
+        for_each = setintersection([var.HOME], ["rw"])
+        labels = [ "home-${volume.key}" ]
+        content {
+          type      = "host"
+          source    = "home-${volume.key}"
+          read_only = false
+        }
+      }
+
+      dynamic "volume" {
+        # volume.key == slot, eg: "/pv3"
+        # volume.value == dest dir, eg: "/pv" or "/bitnami/wordpress"
+        labels = [ volume.key ]
+        for_each = local.pvs
+        content {
+          type      = "host"
+          read_only = false
+          source    = "${volume.key}"
         }
       }
     }
-
-    # The "service" stanza instructs Nomad to register this task as a service
-    # in the service discovery engine, which is currently Consul. This will
-    # make the service addressable after Nomad has placed it on a host and
-    # port.
-    #
-    # For more information and examples on the "service" stanza, please see
-    # the online documentation at:
-    #
-    #     https://www.nomadproject.io/docs/job-specification/service.html
-    #
-    service {
-      name = "${var.SLUG}"
-      # second line automatically redirects any http traffic to https
-      tags = concat([for HOST in var.HOSTNAMES :
-        "urlprefix-${HOST}:443/"], [for HOST in var.HOSTNAMES :
-        "urlprefix-${HOST}:80/ redirect=308,https://${HOST}$path"])
-
-      canary_tags = concat([for HOST in var.HOSTNAMES :
-        "urlprefix-canary-${HOST}:443/"], [for HOST in var.HOSTNAMES :
-        "urlprefix-canary-${HOST}:80/ redirect=308,https://canary-${HOST}/"])
-
-
-      port = "http"
-
-      connect { native = true }
-
-      check {
-        name     = "alive"
-        type     = "${var.CHECK_PROTOCOL}"
-        path     = "${var.CHECK_PATH}"
-        port     = "http"
-        timeout  = "10s"
-        interval = "10s"
-      }
-    }
-
-    dynamic "service" {
-      for_each = local.ports_extra_http
-      content {
-        # service.key == portnumber
-        # service.value == portname
-        name = "${var.SLUG}-${service.value}"
-        tags = ["urlprefix-${var.HOSTNAMES[0]}:${service.key}/"]
-        port = "${service.value}"
-        check {
-          name     = "alive"
-          type     = "${var.CHECK_PROTOCOL}"
-          path     = "${var.CHECK_PATH}"
-          port     = "http"
-          interval = "10s"
-          timeout  = "2s"
-        }
-      }
-    }
-    dynamic "service" {
-      for_each = local.ports_extra_tcp
-      content {
-        # service.key == portnumber
-        # service.value == portname
-        name = "${var.SLUG}-${service.value}"
-        tags = ["urlprefix-:${service.key} proto=tcp"]
-        port = "${service.value}"
-        check {
-          name     = "alive"
-          type     = "${var.CHECK_PROTOCOL}"
-          path     = "${var.CHECK_PATH}"
-          port     = "http"
-          interval = "10s"
-          timeout  = "2s"
-        }
-      }
-    }
-
-
-    dynamic "task" {
-      for_each = local.job_names
-      labels = ["${task.value}"]
-      content {
-        driver = "docker"
-
-        env {
-          # daemon reads this to know what port to listen on
-          PORT = "${NOMAD_PORT_http}"
-          # convenience var you can copy/paste in the other container, to talk to us
-          WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
-        }
-
-        config {
-          image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
-          network_mode = "local"
-          ports = ["http"]
-        }
-      }
-    }
-  }
-
-
-  group "NOMAD_VAR_SLUG-backend" {
-    network {
-      # you can omit `to = ..` to let nomad choose the port - that works, too :)
-      port "http" { to = 5432 }
-    }
-
-    service {
-      name = "${var.SLUG}-backend"
-      port = "http"
-
-      connect { native = true }
-
-      check {
-        name     = "alive"
-        type     = "tcp"
-        port     = "http"
-        timeout  = "10s"
-        interval = "10s"
-      }
-    }
-
-    dynamic "task" {
-      for_each = ["${var.SLUG}-backend"]
-      labels = ["${task.value}"]
-      content {
-        driver = "docker"
-
-        env {
-          # daemon reads this to know what port to listen on
-          PORT = "${NOMAD_PORT_http}"
-          # convenience var you can copy/paste in the other container, to talk to us
-          WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
-        }
-
-        config {
-          image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
-          network_mode = "local"
-          ports = ["http"]
-        }
-      }
-    }
-  }
-
 
 
   reschedule {
@@ -416,4 +488,7 @@ job "NOMAD_VAR_SLUG" {
       randomly = uuidv4()
     }
   }
+
+
+  # JOB.NOMAD--INSERTS-HERE
 } # end job
