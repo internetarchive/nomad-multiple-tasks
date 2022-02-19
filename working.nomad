@@ -3,6 +3,12 @@ variables {
   CI_COMMIT_SHA = "latest"
   CI_REGISTRY = "registry.archive.org"
   CI_REGISTRY_IMAGE = "registry.archive.org/www/sentry"
+
+  SLUG = "internetarchive-nomad-multiple-tasks"
+  CI_R2_USER = ""
+  CI_REGISTRY_USER = ""
+  CI_R2_PASS = ""
+  CI_REGISTRY_PASSWORD = ""
 }
 
 variable "HOSTNAMES" {
@@ -29,17 +35,17 @@ variable "NOMAD_SECRETS" {
 #  https://medium.com/@leshik/a-little-trick-with-docker-12686df15d58
 
 
-job "internetarchive-nomad-multiple-tasks" {
+job "NOMAD_VAR_SLUG" {
   datacenters = ["dc1"]
 
-  group "internetarchive-nomad-multiple-tasks" {
+  group "NOMAD_VAR_SLUG" {
     network {
       # you can omit `to = ..` to let nomad choose the port - that works, too :)
       port "http" { to = 5000 }
     }
 
     service {
-      name = "internetarchive-nomad-multiple-tasks"
+      name = "${var.SLUG}"
       port = "http"
 
       connect { native = true }
@@ -58,52 +64,68 @@ job "internetarchive-nomad-multiple-tasks" {
       }
     }
 
-    task "internetarchive-nomad-multiple-tasks" {
-      driver = "docker"
+    dynamic "task" {
+      for_each = ["${var.SLUG}"]
+      labels = ["${task.value}"]
+      content {
+        driver = "docker"
 
-      env {
-        # daemon reads this to know what port to listen on
-        PORT = "${NOMAD_PORT_http}"
-        # convenience var you can copy/paste in the other container, to talk to us
-        WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
-      }
+        env {
+          # daemon reads this to know what port to listen on
+          PORT = "${NOMAD_PORT_http}"
+          # convenience var you can copy/paste in the other container, to talk to us
+          WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
+        }
 
-      config {
-        image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
-        network_mode = "local"
-        ports = ["http"]
+        config {
+          image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
+          network_mode = "local"
+          ports = ["http"]
+        }
       }
     }
   }
 
 
-  group "internetarchive-nomad-multiple-tasks-backend" {
+  group "NOMAD_VAR_SLUG-backend" {
     network {
       # you can omit `to = ..` to let nomad choose the port - that works, too :)
       port "http" { to = 5432 }
     }
 
     service {
-      name = "internetarchive-nomad-multiple-tasks-backend"
+      name = "${var.SLUG}-backend"
       port = "http"
 
       connect { native = true }
+
+      check {
+        name     = "alive"
+        type     = "tcp"
+        port     = "http"
+        timeout  = "10s"
+        interval = "10s"
+      }
     }
 
-    task "internetarchive-nomad-multiple-tasks-backend" {
-      driver = "docker"
+    dynamic "task" {
+      for_each = ["${var.SLUG}-backend"]
+      labels = ["${task.value}"]
+      content {
+        driver = "docker"
 
-      env {
-        # daemon reads this to know what port to listen on
-        PORT = "${NOMAD_PORT_http}"
-        # convenience var you can copy/paste in the other container, to talk to us
-        WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
-      }
+        env {
+          # daemon reads this to know what port to listen on
+          PORT = "${NOMAD_PORT_http}"
+          # convenience var you can copy/paste in the other container, to talk to us
+          WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
+        }
 
-      config {
-        image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
-        network_mode = "local"
-        ports = ["http"]
+        config {
+          image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
+          network_mode = "local"
+          ports = ["http"]
+        }
       }
     }
   }
