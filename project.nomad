@@ -192,6 +192,26 @@ job "NOMAD_VAR_SLUG" {
   datacenters = ["dc1"]
 
   group "NOMAD_VAR_SLUG" {
+    count = var.COUNT
+
+    update {
+      # https://learn.hashicorp.com/tutorials/nomad/job-rolling-update
+      max_parallel  = 1
+      # https://learn.hashicorp.com/tutorials/nomad/job-blue-green-and-canary-deployments
+      canary = var.COUNT
+      auto_promote  = true
+      min_healthy_time  = "30s"
+      healthy_deadline  = "5m"
+      progress_deadline = "10m"
+      auto_revert   = true
+    }
+    restart {
+      attempts = 3
+      delay    = "15s"
+      interval = "30m"
+      mode     = "fail"
+    }
+
     network {
       # you can omit `to = ..` to let nomad choose the port - that works, too :)
       port "http" { to = 5000 }
@@ -282,4 +302,61 @@ job "NOMAD_VAR_SLUG" {
       }
     }
   }
-}
+
+
+
+  reschedule {
+    # Up to 20 attempts, 20s delays between fails, doubling delay between, w/ a 15m cap, eg:
+    #
+    # deno eval 'let tot=0; let d=20; for (let i=0; i < 20; i++) { console.warn({d, tot}); d=Math.min(900, d*2); tot += d }'
+    attempts       = 10
+    delay          = "20s"
+    max_delay      = "1800s"
+    delay_function = "exponential"
+    interval       = "4h"
+    unlimited      = false
+  }
+
+  spread {
+    # Spread allocations equally over all nodes
+    attribute = "${node.unique.id}"
+  }
+
+  migrate {
+    max_parallel = 3
+    health_check = "checks"
+    min_healthy_time = "15s"
+    healthy_deadline = "5m"
+  }
+
+
+  # This allows us to more easily partition nodes (if desired) to run normal jobs like this (or not)
+  dynamic "constraint" {
+    for_each = slice(local.kinds, 0, min(1, length(local.kinds)))
+    content {
+      attribute = "${meta.kind}"
+      operator = "set_contains"
+      value = "${constraint.value}"
+    }
+  }
+  dynamic "constraint" {
+    for_each = slice(local.kinds_not, 0, min(1, length(local.kinds_not)))
+    content {
+      attribute = "${meta.kind}"
+      operator = "regexp"
+      value = "^(lb,*|worker,*)*$"
+    }
+  }
+
+  # This next part is for GitHub repos.  Since the GH docker image name DOESNT change each commit,
+  # yet we need to ensure the jobspec sent to nomad "changes" each commit/pipeline,
+  # auto-insert a random string.
+  # Without this, nomad thinks it has already deployed the relevant registry image and jobspec,
+  # referenced by and automatically created by the pipeline.
+  dynamic "meta" {
+    for_each = local.docker_no_login
+    content {
+      randomly = uuidv4()
+    }
+  }
+} # end job
