@@ -7,7 +7,7 @@ dig +short  internetarchive-nomad-multiple-tasks-backend.service.consul  SRV
 
 const back = 'internetarchive-nomad-multiple-tasks-backend'
 const task = Deno.env.get('NOMAD_TASK_NAME')
-const listen = Number(Deno.env.get('NOMAD_PORT_http') || 5000)
+const listen = Number(Deno.env.get('NOMAD_PORT_http') || Number(Deno.env.get('NOMAD_PORT_back') || 5000)
 
 console.log(`listening on ${listen}`)
 
