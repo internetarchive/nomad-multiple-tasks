@@ -12,5 +12,5 @@ read the environment variable for the relevant named port.
 For example, for a port named `backend`, you'd want to read this environment variable
 which contains the IP address and port number of the backend service.
 ```
-$NOMAD_PORT_backend
+$NOMAD_ADDR_backend
 ```
