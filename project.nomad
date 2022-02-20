@@ -11,16 +11,12 @@
 
 
 variables {
+  CI_REGISTRY = "registry.gitlab.com"
+  CI_REGISTRY_IMAGE = "registry.gitlab.com/internetarchive/nomad-multiple-tasks"
   CI_COMMIT_REF_SLUG = "main"
   CI_COMMIT_SHA = "latest"
-  CI_REGISTRY = "registry.gitlab.com"
-  CI_REGISTRY_IMAGE = "registry.gitlab.com/internetarchive/nomad-multiple-tasks/main"
 
   SLUG = "internetarchive-nomad-multiple-tasks"
-  CI_R2_USER = ""
-  CI_REGISTRY_USER = ""
-  CI_R2_PASS = ""
-  CI_REGISTRY_PASSWORD = ""
 }
 
 variable "HOSTNAMES" {
@@ -46,6 +42,7 @@ job "NOMAD_VAR_SLUG" {
     }
 
     service {
+      task = "${var.SLUG}"
       name = "${var.SLUG}"
       port = "http"
 
@@ -81,6 +78,7 @@ job "NOMAD_VAR_SLUG" {
 
 
     service {
+      task = "${var.SLUG}-backend"
       name = "${var.SLUG}-backend"
       port = "back"
 
