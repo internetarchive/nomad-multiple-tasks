@@ -38,7 +38,7 @@ job "NOMAD_VAR_SLUG" {
     network {
       # you can omit `to = ..` to let nomad choose the port - that works, too :)
       port "http" { to = 5000 }
-      port "back" { to = 5432 }
+      port "backend" { to = 5432 }
     }
 
     service {
@@ -80,14 +80,14 @@ job "NOMAD_VAR_SLUG" {
     service {
       task = "${var.SLUG}-backend"
       name = "${var.SLUG}-backend"
-      port = "back"
+      port = "backend"
 
       connect { native = true }
 
       check {
         name     = "alive"
         type     = "tcp"
-        port     = "back"
+        port     = "backend"
         timeout  = "10s"
         interval = "10s"
       }
@@ -102,7 +102,7 @@ job "NOMAD_VAR_SLUG" {
         config {
           image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
           network_mode = "local"
-          ports = ["back"]
+          ports = ["backend"]
         }
       }
     }
