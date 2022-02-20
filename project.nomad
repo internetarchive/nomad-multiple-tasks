@@ -451,6 +451,17 @@ job "NOMAD_VAR_SLUG" {
     unlimited      = false
   }
 
+  dynamic "spread" {
+    # This stanza seems to interfere w/ 2+ `group { .. }` and using consult connect native.
+    # So only add it to the jobspec when we are deploy 2+ instances.
+    # NOTE: PORTS isnt used -- just needed a dummy list of 1+ strings
+    for_each = slice(keys(var.PORTS), 0, min(1, var.COUNT - 1))
+    content {
+      # Spread allocations equally over all nodes
+      attribute = "${node.unique.id}"
+    }
+  }
+
   migrate {
     max_parallel = 3
     health_check = "checks"
