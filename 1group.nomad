@@ -13,8 +13,8 @@
 variables {
   CI_COMMIT_REF_SLUG = "main"
   CI_COMMIT_SHA = "latest"
-  CI_REGISTRY = "xxx"
-  CI_REGISTRY_IMAGE = "xxx"
+  CI_REGISTRY = "registry.gitlab.com"
+  CI_REGISTRY_IMAGE = "registry.gitlab.com/internetarchive/nomad-multiple-tasks/main"
 
   SLUG = "internetarchive-nomad-multiple-tasks"
   CI_R2_USER = ""
@@ -71,13 +71,6 @@ job "NOMAD_VAR_SLUG" {
       content {
         driver = "docker"
 
-        env {
-          # daemon reads this to know what port to listen on
-          PORT = "${NOMAD_PORT_http}"
-          # convenience var you can copy/paste in the other container, to talk to us
-          WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
-        }
-
         config {
           image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
           network_mode = "local"
@@ -107,13 +100,6 @@ job "NOMAD_VAR_SLUG" {
       labels = ["${task.value}"]
       content {
         driver = "docker"
-
-        env {
-          # daemon reads this to know what port to listen on
-          PORT = "${NOMAD_PORT_back}"
-          # convenience var you can copy/paste in the other container, to talk to us
-          WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_back}"
-        }
 
         config {
           image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
