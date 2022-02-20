@@ -3,7 +3,6 @@
 network {
   port "backend" { to = 5432 }
 }
-*/
 
 service {
   task = "${var.SLUG}-backend"
@@ -18,17 +17,13 @@ service {
     interval = "10s"
   }
 }
+*/
 
+task "NOMAD_VAR_SLUG-backend" {
+  driver = "docker"
 
-dynamic "task" {
-  for_each = ["${var.SLUG}-backend"]
-  labels = ["${task.value}"]
-  content {
-    driver = "docker"
-
-    config {
-      image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
-      ports = ["backend"]
-    }
+  config {
+    image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
+    ports = ["backend"]
   }
 }
