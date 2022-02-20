@@ -388,6 +388,23 @@ job "NOMAD_VAR_SLUG" {
         }
       } # end dynamic "task"
 
+      dynamic "task" { # xxx
+        # when a job has CI/CD secrets - eg: CI/CD Variables named like "NOMAD_SECRET_..."
+        # then here is where we dynamically insert them into consul (as a single JSON k/v string)
+        for_each = slice(keys(var.NOMAD_SECRETS), 0, min(1, length(keys(var.NOMAD_SECRETS))))
+        labels = ["kv"]
+        content {
+          driver = "exec"
+          config {
+            command = var.CONSUL_PATH
+            args = [ "kv", "put", var.SLUG, local.kv ]
+          }
+          lifecycle {
+            hook = "prestart"
+            sidecar = false
+          }
+        }
+      }
 
       dynamic "volume" {
         for_each = setintersection([var.HOME], ["ro"])
