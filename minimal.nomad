@@ -46,7 +46,7 @@ job "NOMAD_VAR_SLUG" {
       name = "${var.SLUG}"
       port = "http"
 
-      connect { native = true }
+      connect { native = true } # xxx
 
       # tags (for load balancer external name entries) & check are only difference between 2 groups
       tags = concat([for HOST in var.HOSTNAMES :
@@ -82,7 +82,7 @@ job "NOMAD_VAR_SLUG" {
       name = "${var.SLUG}-backend"
       port = "backend"
 
-      connect { native = true }
+      connect { native = true } # xxx
 
       check {
         name     = "alive"
