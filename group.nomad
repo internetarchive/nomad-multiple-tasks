@@ -1,7 +1,6 @@
 // xxx - fights project.nomad's `ports_extra_http`
 
 network {
-  port "http" { to = 5000 }
   port "backend" { to = 5432 }
 }
 
