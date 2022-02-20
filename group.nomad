@@ -1,4 +1,4 @@
-/* xxx - fights project.nomad's `ports_extra_http`
+// xxx - fights project.nomad's `ports_extra_http`
 service {
   task = "${var.SLUG}-backend"
   name = "${var.SLUG}-backend"
@@ -12,7 +12,7 @@ service {
     interval = "10s"
   }
 }
-*/
+
 
 dynamic "task" {
   for_each = ["${var.SLUG}-backend"]

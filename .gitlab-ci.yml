@@ -1,6 +1,6 @@
 variables:
   NOMAD_VAR_CHECK_PROTOCOL: 'tcp'
-  NOMAD_VAR_PORTS: '{ 5000 = "http", 5432 = "backend" }'
+#  NOMAD_VAR_PORTS: '{ 5000 = "http", 5432 = "backend" }' # xxx
 
 include:
   - remote: 'https://gitlab.com/internetarchive/nomad/-/raw/master/.gitlab-ci.yml'
