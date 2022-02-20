@@ -1,15 +1,3 @@
-# NOTE: *critically* you have to run this on each VM that hosts nomad docker containers *first*:
-#   sudo docker network create local
-
-# To find another container's port to talk to it, use for hostname: [TASKNAME].connect.consul
-# and then to lookup, for example, `internetarchive-nomad-multiple-tasks-backend` port, either of:
-#   dig +short internetarchive-nomad-multiple-tasks-backend.service.consul SRV |cut -f3 -d' '
-#   wget -qO- 'http://consul.service.consul:8500/v1/catalog/service/internetarchive-nomad-multiple-tasks-backend?passing' |jq .
-#
-#
-#  https://medium.com/@leshik/a-little-trick-with-docker-12686df15d58
-
-
 variables {
   CI_REGISTRY = "registry.gitlab.com"
   CI_REGISTRY_IMAGE = "registry.gitlab.com/internetarchive/nomad-multiple-tasks"
@@ -46,8 +34,6 @@ job "NOMAD_VAR_SLUG" {
       name = "${var.SLUG}"
       port = "http"
 
-      connect { native = true } # xxx
-
       # tags (for load balancer external name entries) & check are only difference between 2 groups
       tags = concat([for HOST in var.HOSTNAMES :
         "urlprefix-${HOST}:443/"], [for HOST in var.HOSTNAMES :
@@ -70,7 +56,6 @@ job "NOMAD_VAR_SLUG" {
 
         config {
           image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
-          network_mode = "local"
           ports = ["http"]
         }
       }
@@ -81,8 +66,6 @@ job "NOMAD_VAR_SLUG" {
       task = "${var.SLUG}-backend"
       name = "${var.SLUG}-backend"
       port = "backend"
-
-      connect { native = true } # xxx
 
       check {
         name     = "alive"
@@ -101,7 +84,6 @@ job "NOMAD_VAR_SLUG" {
 
         config {
           image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
-          network_mode = "local"
           ports = ["backend"]
         }
       }
