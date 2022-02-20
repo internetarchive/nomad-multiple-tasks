@@ -446,6 +446,50 @@ job "NOMAD_VAR_SLUG" {
     }
 
 
+group "NOMAD_VAR_SLUG-backend" {
+  network {
+    # you can omit `to = ..` to let nomad choose the port - that works, too :)
+    port "http" { to = 5432 }
+  }
+
+  service {
+    name = "${var.SLUG}-backend"
+    port = "http"
+
+    connect { native = true }
+
+    check {
+      name     = "alive"
+      type     = "tcp"
+      port     = "http"
+      timeout  = "10s"
+      interval = "10s"
+    }
+  }
+
+  dynamic "task" {
+    for_each = ["${var.SLUG}-backend"]
+    labels = ["${task.value}"]
+    content {
+      driver = "docker"
+
+      env {
+        # daemon reads this to know what port to listen on
+        PORT = "${NOMAD_PORT_http}"
+        # convenience var you can copy/paste in the other container, to talk to us
+        WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
+      }
+
+      config {
+        image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
+        network_mode = "local"
+        ports = ["http"]
+      }
+    }
+  }
+}
+
+
   reschedule {
     # Up to 20 attempts, 20s delays between fails, doubling delay between, w/ a 15m cap, eg:
     #
@@ -496,48 +540,5 @@ job "NOMAD_VAR_SLUG" {
     }
   }
 
-
-group "NOMAD_VAR_SLUG-backend" {
-  network {
-    # you can omit `to = ..` to let nomad choose the port - that works, too :)
-    port "http" { to = 5432 }
-  }
-
-  service {
-    name = "${var.SLUG}-backend"
-    port = "http"
-
-    connect { native = true }
-
-    check {
-      name     = "alive"
-      type     = "tcp"
-      port     = "http"
-      timeout  = "10s"
-      interval = "10s"
-    }
-  }
-
-  dynamic "task" {
-    for_each = ["${var.SLUG}-backend"]
-    labels = ["${task.value}"]
-    content {
-      driver = "docker"
-
-      env {
-        # daemon reads this to know what port to listen on
-        PORT = "${NOMAD_PORT_http}"
-        # convenience var you can copy/paste in the other container, to talk to us
-        WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
-      }
-
-      config {
-        image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
-        network_mode = "local"
-        ports = ["http"]
-      }
-    }
-  }
-}
 
 } # end job
