@@ -1,8 +1,9 @@
 // xxx - fights project.nomad's `ports_extra_http`
-
+/*
 network {
   port "backend" { to = 5432 }
 }
+*/
 
 service {
   task = "${var.SLUG}-backend"
