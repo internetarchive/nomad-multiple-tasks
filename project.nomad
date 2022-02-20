@@ -298,13 +298,6 @@ job "NOMAD_VAR_SLUG" {
         content {
           driver = "docker"
 
-          env {
-            # daemon reads this to know what port to listen on
-            PORT = "${NOMAD_PORT_http}"
-            # convenience var you can copy/paste in the other container, to talk to us
-            WGET = "wget -qO- ${NOMAD_TASK_NAME}.connect.consul:${NOMAD_PORT_http}"
-          }
-
           # UGH - have to copy/paste this next block twice -- first for no docker login needed;
           #       second for docker login needed (job spec will assemble in just one).
           #       This is because we can't put dynamic content *inside* the 'config { .. }' stanza.
@@ -376,6 +369,20 @@ job "NOMAD_VAR_SLUG" {
               volume      = "${volume_mount.key}"
               destination = "${volume_mount.value}"
               read_only   = false
+            }
+          }
+
+          dynamic "template" {
+            # Secrets get stored in consul kv store, with the key [SLUG], when your project has set a
+            # CI/CD variable like NOMAD_SECRET_[SOMETHING].
+            # Setup the nomad job to dynamically pull secrets just before the container starts -
+            # and insert them into the running container as environment variables.
+            for_each = slice(keys(var.NOMAD_SECRETS), 0, min(1, length(keys(var.NOMAD_SECRETS))))
+            content {
+              change_mode = "noop"
+              destination = "secrets/kv.env"
+              env         = true
+              data = "{{ key \"${var.SLUG}\" }}"
             }
           }
         }
@@ -510,4 +517,5 @@ group "NOMAD_VAR_SLUG-backend" {
   }
 
 
+  # JOB.NOMAD--INSERTS-HERE
 } # end job
