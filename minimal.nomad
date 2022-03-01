@@ -1,3 +1,10 @@
+#
+#
+# NOTE: this file is not used in any way and is just here to help show a more complete, but minimal, multi-container
+#       jobspec end-to-end
+#
+
+
 variables {
   CI_REGISTRY = "registry.gitlab.com"
   CI_REGISTRY_IMAGE = "registry.gitlab.com/internetarchive/nomad-multiple-tasks"
