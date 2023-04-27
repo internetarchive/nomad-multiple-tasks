@@ -14,3 +14,12 @@ which contains the IP address and port number of the backend service.
 ```
 $NOMAD_ADDR_backend
 ```
+
+Our port numbers and names get setup in our
+
+[.gitlab-ci.yml](.gitlab-ci.yml)
+
+here:
+```yaml
+  NOMAD_VAR_PORTS: '{ 5000 = "http", 5432 = "backend" }'
+```

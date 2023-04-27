@@ -1,4 +1,4 @@
-task "NOMAD_VAR_SLUG-backend" {
+task "backend" {
   driver = "docker"
 
   config {

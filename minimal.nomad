@@ -1,9 +1,5 @@
-#
-#
-# NOTE: this file is not used in any way and is just here to help show a more complete, but minimal, multi-container
-#       jobspec end-to-end
-#
-
+# NOTE: this file is not used in any way and is just here to help show a more complete, but minimal,
+#       multi-container jobspec end-to-end
 
 variables {
   CI_REGISTRY = "registry.gitlab.com"
@@ -19,12 +15,6 @@ variable "HOSTNAMES" {
   default = ["internetarchive-nomad-multiple-tasks.dev.archive.org"]
 }
 
-variable "NOMAD_SECRETS" {
-  # this is automatically populated with NOMAD_SECRET_ env vars by @see .gitlab-ci.yml
-  type = map(string)
-  default = {}
-}
-
 
 job "NOMAD_VAR_SLUG" {
   datacenters = ["dc1"]
@@ -36,63 +26,52 @@ job "NOMAD_VAR_SLUG" {
       port "backend" { to = 5432 }
     }
 
+    task "http" {
+      driver = "docker"
+      config {
+        image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
+        ports = ["http"]
+      }
+    }
+
+    task "backend" {
+      driver = "docker"
+      config {
+        image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
+        ports = ["backend"]
+      }
+    }
+
     service {
-      task = "${var.SLUG}"
+      task = "http"
       name = "${var.SLUG}"
       port = "http"
 
-      # tags (for load balancer external name entries) & check are only difference between 2 groups
-      tags = concat([for HOST in var.HOSTNAMES :
-        "urlprefix-${HOST}:443/"], [for HOST in var.HOSTNAMES :
-        "urlprefix-${HOST}:80/ redirect=308,https://${HOST}/"])
+      # tags (for load balancer external name entries)
+      tags = [for HOST in var.HOSTNAMES: "https://${HOST}"]
 
       check {
+        port     = "http"
         name     = "alive"
         type     = "tcp"
-        port     = "http"
         timeout  = "10s"
         interval = "10s"
       }
     }
-
-    dynamic "task" {
-      for_each = ["${var.SLUG}"]
-      labels = ["${task.value}"]
-      content {
-        driver = "docker"
-
-        config {
-          image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
-          ports = ["http"]
-        }
-      }
-    }
-
 
     service {
-      task = "${var.SLUG}-backend"
-      name = "${var.SLUG}-backend"
+      task = "backend"
+      name = "${var.SLUG}--backend"
       port = "backend"
 
+      # no tags (for load balancer external name entries) since backend isn't exposed to browser
+
       check {
+        port     = "backend"
         name     = "alive"
         type     = "tcp"
-        port     = "backend"
         timeout  = "10s"
         interval = "10s"
-      }
-    }
-
-    dynamic "task" {
-      for_each = ["${var.SLUG}-backend"]
-      labels = ["${task.value}"]
-      content {
-        driver = "docker"
-
-        config {
-          image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
-          ports = ["backend"]
-        }
       }
     }
   }

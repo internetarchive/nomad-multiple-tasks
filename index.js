@@ -1,8 +1,8 @@
 #!/usr/bin/env -S deno run --allow-net --allow-env --allow-run --watch
 
-const back = 'internetarchive-nomad-multiple-tasks-backend'
+const backend_task_name = 'backend'
 const task = Deno.env.get('NOMAD_TASK_NAME')
-const listen = Number(Deno.env.get(task !== back ? 'NOMAD_PORT_http' : 'NOMAD_PORT_backend'))
+const listen = Number(Deno.env.get(task !== backend_task_name ? 'NOMAD_PORT_http' : 'NOMAD_PORT_backend'))
 
 console.log(`listening on ${listen}`)
 
@@ -15,13 +15,13 @@ async function handle(conn) {
 
     let msg = ''
 
-    if (task && task !== back) {
+    if (task && task !== backend_task_name) {
       // now talk to the backend
       try {
         const hostport = Deno.env.get('NOMAD_ADDR_backend')
         const backsay = await (await fetch(`http://${hostport}`)).text()
 
-        msg += `\n\n talked to ${back}\n here's what they said:\n ${backsay}`
+        msg += `\n\n talked to ${backend_task_name}\n here's what they said:\n ${backsay}`
       } catch (error) {
         console.log({ error })
       }
