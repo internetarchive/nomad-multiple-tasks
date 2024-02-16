@@ -3,7 +3,7 @@
 demo repo that deploys two+ related containers (eg: frontend + redis or DB, etc.)
 which can talk to each other
 
-example webapp (this repo): https://internetarchive-nomad-multiple-tasks.dev.archive.org/
+example webapp (this repo): https://multi.dev.archive.org/
 
 
 ## how to
