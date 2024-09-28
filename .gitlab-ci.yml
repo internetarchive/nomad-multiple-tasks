@@ -4,5 +4,7 @@ variables:
   NOMAD_VAR_HOSTNAMES: '["multi"]'
   NOMAD_VAR_VOLUMES: '["${PVBASE}/geoip:/geoip"]'
 
+  NOMAD_VAR_NAMESPACE: 'ait'
+
 include:
   - remote: 'https://gitlab.com/internetarchive/nomad/-/raw/master/.gitlab-ci.yml'
