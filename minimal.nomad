@@ -2,11 +2,7 @@
 #       multi-container jobspec end-to-end
 
 variables {
-  CI_REGISTRY = "ghcr.io"
   CI_REGISTRY_IMAGE = "ghcr.io/internetarchive/nomad-multiple-tasks:main"
-  CI_COMMIT_REF_SLUG = "main"
-  CI_COMMIT_SHA = "latest"
-
   SLUG = "internetarchive-nomad-multiple-tasks"
 }
 
@@ -29,7 +25,7 @@ job "NOMAD_VAR_SLUG" {
     task "http" {
       driver = "docker"
       config {
-        image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
+        image = "${var.CI_REGISTRY_IMAGE}"
         ports = ["http"]
       }
     }
@@ -37,7 +33,7 @@ job "NOMAD_VAR_SLUG" {
     task "backend" {
       driver = "docker"
       config {
-        image = "${var.CI_REGISTRY_IMAGE}/${var.CI_COMMIT_REF_SLUG}:${var.CI_COMMIT_SHA}"
+        image = "${var.CI_REGISTRY_IMAGE}"
         ports = ["backend"]
       }
     }
