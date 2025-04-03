@@ -1,0 +1,12 @@
+on: [push, workflow_dispatch]
+jobs:
+  cicd:
+    # https://github.com/internetarchive/cicd
+    uses: internetarchive/cicd/.github/workflows/cicd.yml@main
+    with:
+      NOMAD_VAR_PORTS: '{ 5000 = "http", 5432 = "backend" }'
+      NOMAD_VAR_MULTI_CONTAINER: 'true'
+      BASE_DOMAIN: ext.archive.org
+      NO_TEST: true
+    secrets:
+      NOMAD_TOKEN_EXT: ${{ secrets.NOMAD_TOKEN_EXT }}

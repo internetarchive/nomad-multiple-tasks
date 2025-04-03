@@ -2,8 +2,8 @@
 #       multi-container jobspec end-to-end
 
 variables {
-  CI_REGISTRY = "registry.gitlab.com"
-  CI_REGISTRY_IMAGE = "registry.gitlab.com/internetarchive/nomad-multiple-tasks"
+  CI_REGISTRY = "ghcr.io"
+  CI_REGISTRY_IMAGE = "ghcr.io/internetarchive/nomad-multiple-tasks:main"
   CI_COMMIT_REF_SLUG = "main"
   CI_COMMIT_SHA = "latest"
 
@@ -12,7 +12,7 @@ variables {
 
 variable "HOSTNAMES" {
   type = list(string)
-  default = ["internetarchive-nomad-multiple-tasks.dev.archive.org"]
+  default = ["internetarchive-nomad-multiple-tasks.ext.archive.org"]
 }
 
 

@@ -3,7 +3,7 @@
 demo repo that deploys two+ related containers (eg: frontend + redis or DB, etc.)
 which can talk to each other
 
-example webapp (this repo): https://multi.dev.archive.org/
+example webapp (this repo): https://internetarchive-multi.ext.archive.org/
 
 
 ## how to
@@ -17,7 +17,7 @@ $NOMAD_ADDR_backend
 
 Our port numbers and names get setup in our
 
-[.gitlab-ci.yml](.gitlab-ci.yml)
+[.github/workflows/cicd.yml](.github/workflows/cicd.yml)
 
 here:
 ```yaml
