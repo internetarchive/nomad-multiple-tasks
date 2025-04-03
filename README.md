@@ -1,5 +1,7 @@
 # nomad-multiple-tasks
 
+![logo.png](logo.png)
+
 demo repo that deploys two+ related containers (eg: frontend + redis or DB, etc.)
 which can talk to each other
 
